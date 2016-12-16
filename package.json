@@ -32,5 +32,8 @@
   "bugs": {
     "url": "https://github.com/DarkMarmot/catbus/issues"
   },
-  "homepage": "https://github.com/DarkMarmot/catbus"
+  "homepage": "https://github.com/DarkMarmot/catbus",
+  "dependencies": {
+    "sinon": "^1.17.6"
+  }
 }

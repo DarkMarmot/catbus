@@ -1,5 +1,7 @@
 //run mocha from project root
 
+var sinon = require('sinon');
+
 var events = require('events');
 
 
@@ -244,10 +246,11 @@ describe('Catbus', function(){
             });
 
 
-            it('can delay messages', function (done) {
+            it('can delay messages', function () {
 
                 reset();
-                this.timeout(1000);
+
+                this.clock = sinon.useFakeTimers();
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -264,26 +267,28 @@ describe('Catbus', function(){
 
                 assert.equal(msgLog.length, 0);
 
-                function assertLater(){
+                this.clock.tick(50);
 
-                    assert.equal(msgLog[0], 10);
-                    assert.equal(msgLog[5], 14);
+                assert.equal(msgLog[0], undefined);
 
-                }
+                this.clock.tick(110);
 
-                setTimeout(function(){
-                    b.destroy();
-                    assertLater();
-                    done();
-                }, 200);
+                b.destroy();
 
+                assert.equal(msgLog[0], 10);
+                assert.equal(msgLog[5], 14);
+
+                this.clock.restore();
             });
 
 
-            it('can batch messages', function (done) {
+            it('can batch messages', function () {
 
                 reset();
+
                 this.timeout(1000);
+
+                this.clock = sinon.useFakeTimers();
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -301,24 +306,21 @@ describe('Catbus', function(){
                 dice.emit('roll', 3);
                 dice.emit('roll', 7);
 
+                this.clock.tick(1);
+
                 assert.equal(msgLog.length, 0);
 
-                function assertLater(){
+                this.clock.tick(110);
 
-                    Catbus.flush();
-                    console.log('BATCH ASSERT');
-                    assert.equal(msgLog.length, 1);
-                    assert.equal(msgLog[0][0], 6);
-                    assert.equal(msgLog[0][1], 14);
+                Catbus.flush();
 
-                }
+                assert.equal(msgLog.length, 1);
+                assert.equal(msgLog[0][0], 6);
+                assert.equal(msgLog[0][1], 14);
 
-                setTimeout(function(){
-                    assertLater();
-                    b.destroy();
-                    done();
-                }, 200);
+                b.destroy();
 
+                this.clock.restore();
             });
 
 
