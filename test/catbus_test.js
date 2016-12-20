@@ -1,21 +1,21 @@
 //run mocha from project root
 
 var sinon = require('sinon');
+var clock = sinon.useFakeTimers();
 
 var events = require('events');
-
-
 var dice = new events.EventEmitter();
 
 var assert = require('assert');
 var Catbus = require('../src/catbus.js');
 
 
-var msgLog, sourceLog, packetLog;
+var msgLog, sourceLog, packetLog, lastMsg;
 
 
 var log = function(msg, source, packet){
 
+    lastMsg = msg;
     console.log('::', msg, source, '\n');
     msgLog.push(msg);
     sourceLog.push(source);
@@ -26,11 +26,21 @@ var log = function(msg, source, packet){
 
 var reset = function(){
 
+    lastMsg = undefined;
+    console.log('reset!');
+    clock = sinon.useFakeTimers();
     sourceLog = [];
     msgLog = [];
     packetLog = [];
 
 };
+
+
+var teardown = function(){
+    console.log('teardown!');
+    clock.restore();
+}
+
 
 reset();
 //
@@ -51,6 +61,8 @@ describe('Catbus', function(){
 
 
             beforeEach(reset);
+
+            afterEach(teardown);
 
             it('creates an event bus', function () {
 
@@ -93,7 +105,7 @@ describe('Catbus', function(){
 
             it('transforms messages', function () {
 
-                reset();
+
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -115,7 +127,7 @@ describe('Catbus', function(){
 
             it('filters messages', function () {
 
-                reset();
+
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -139,7 +151,6 @@ describe('Catbus', function(){
 
             it('can skip duplicate messages', function () {
 
-                reset();
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -166,7 +177,7 @@ describe('Catbus', function(){
 
             it('can keep multiple messages using last', function () {
 
-                reset();
+
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -174,16 +185,23 @@ describe('Catbus', function(){
                 b.run(log);
 
                 dice.emit('roll', 5);
+
+                assert.equal(lastMsg.length, 1);
+
                 dice.emit('drop', 1);
                 dice.emit('roll', 5);
+
+                assert.equal(lastMsg.length, 2);
+
                 dice.emit('roll', 3);
+
+                assert.equal(lastMsg.length, 3);
+
                 dice.emit('roll', 3);
                 dice.emit('roll', 3);
                 dice.emit('roll', 7);
 
                 b.destroy();
-
-                var lastMsg = msgLog[msgLog.length-1];
 
                 assert.equal(lastMsg.length, 3);
                 assert.equal(lastMsg[2], 14);
@@ -193,7 +211,7 @@ describe('Catbus', function(){
 
             it('can keep multiple messages using first', function () {
 
-                reset();
+
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -220,7 +238,7 @@ describe('Catbus', function(){
 
             it('can keep all messages using all', function () {
 
-                reset();
+
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -248,9 +266,9 @@ describe('Catbus', function(){
 
             it('can delay messages', function () {
 
-                reset();
 
-                this.clock = sinon.useFakeTimers();
+
+                console.log('delay!!!');
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -266,29 +284,27 @@ describe('Catbus', function(){
                 dice.emit('roll', 7);
 
                 assert.equal(msgLog.length, 0);
+                console.log(clock);
+                console.log(Date.now());
 
-                this.clock.tick(50);
+                clock.tick(50);
 
+                console.log(Date.now());
                 assert.equal(msgLog[0], undefined);
 
-                this.clock.tick(110);
+                clock.tick(110);
 
                 b.destroy();
 
                 assert.equal(msgLog[0], 10);
                 assert.equal(msgLog[5], 14);
 
-                this.clock.restore();
+
             });
 
 
             it('can batch messages', function () {
 
-                reset();
-
-                this.timeout(1000);
-
-                this.clock = sinon.useFakeTimers();
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -306,11 +322,11 @@ describe('Catbus', function(){
                 dice.emit('roll', 3);
                 dice.emit('roll', 7);
 
-                this.clock.tick(1);
+                clock.tick(1);
 
                 assert.equal(msgLog.length, 0);
 
-                this.clock.tick(110);
+                clock.tick(110);
 
                 Catbus.flush();
 
@@ -320,13 +336,13 @@ describe('Catbus', function(){
 
                 b.destroy();
 
-                this.clock.restore();
+
             });
 
 
             it('can add buses together', function () {
 
-                reset();
+
 
                 var b1 = Catbus.fromEvent(dice, 'roll');
                 b1.transform(function(msg){ return msg * 2});
@@ -355,30 +371,18 @@ describe('Catbus', function(){
 
             });
 
-            it('can group by source', function (done) {
 
-                reset();
-
-                console.log('groupies\n');
-                this.timeout(1000000);
-
+            it('can fork buses', function () {
 
                 var b1 = Catbus.fromEvent(dice, 'roll');
                 b1.transform(function(msg){ return msg * 2});
 
-                var b2 = Catbus.fromEvent(dice, 'drop');
+                var b2 = b1.fork(); // could do back wiring to preserve expected order?
                 b2.transform(function(msg){ return -msg});
 
-                b1.add(b2);
-                b1.merge();
-                b1.group();
-                b1.last(3);
-                b1.batch();
                 b1.run(log);
+                b2.run(log);
 
-                console.log('b2 DESTROY');
-
-                //b2.destroy();
                 dice.emit('roll', 5);
                 dice.emit('drop', 1);
                 dice.emit('roll', 4);
@@ -387,35 +391,83 @@ describe('Catbus', function(){
                 dice.emit('roll', 3);
                 dice.emit('roll', 7);
 
+                b1.destroy();
+                b2.destroy();
 
-                function assertLater(){
-
-                    Catbus.flush();
-                    assert.equal(msgLog.length, 1);
-                    assert.equal(msgLog[0].roll[2], 14);
-                    assert.equal(msgLog[0].drop[0], -1);
-
-                }
-
-                setTimeout(function(){
-
-                    assertLater();
-                    b1.destroy();
-                    b2.destroy();
-                    done();
-
-                }, 200);
-
-
+                assert.equal(msgLog.length, 12);
+                assert.equal(msgLog[2] + msgLog[3], 0);
 
             });
+
+
+            it('can group by source', function () {
+
+                var b1 = Catbus.fromEvent(dice, 'roll');
+                b1.transform(function(msg){ return msg * 2});
+
+                var b2 = Catbus.fromEvent(dice, 'drop');
+                b2.transform(function(msg){ return -msg});
+
+                b1.add(b2).merge().group().last(3).batch().run(log);
+
+                dice.emit('roll', 5);
+                dice.emit('drop', 1);
+                dice.emit('roll', 4);
+                dice.emit('roll', 3);
+                dice.emit('roll', 3);
+                dice.emit('roll', 3);
+                dice.emit('roll', 7);
+
+                Catbus.flush(); // for batch processing
+
+                assert.equal(msgLog.length, 1);
+                assert.equal(msgLog[0].roll[2], 14);
+                assert.equal(msgLog[0].drop[0], -1);
+
+                b1.destroy();
+                b2.destroy();
+
+            });
+
+            it('can name streams', function () {
+
+                var b1 = Catbus.fromEvent(dice, 'roll');
+                b1.transform(function(msg){ return msg * 2});
+                b1.name('cat');
+
+                var b2 = Catbus.fromEvent(dice, 'drop');
+                b2.transform(function(msg){ return -msg});
+                b2.name('dog');
+
+                b1.add(b2);
+                b1.merge();
+                b1.group();
+                b1.batch();
+                b1.run(log);
+
+                dice.emit('roll', 5);
+                dice.emit('drop', 1);
+                dice.emit('roll', 4);
+                dice.emit('roll', 3);
+                dice.emit('roll', 3);
+                dice.emit('roll', 3);
+                dice.emit('roll', 7);
+
+                Catbus.flush();
+
+                b1.destroy();
+                b2.destroy();
+
+                assert.equal(msgLog.length, 1);
+                assert.equal(msgLog[0].cat, 14);
+                assert.equal(msgLog[0].dog, -1);
+
+            });
+
 
         });
 
 
-
-
-        // todo activate/deactivate bus
 
         // todo ready, clear, latch
 

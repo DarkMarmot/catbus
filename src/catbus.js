@@ -62,6 +62,10 @@
 
     };
 
+    function ASSERT_NOT_HOLDING(bus){
+        if(bus.holding())
+            throw new Error('Method cannot be invoked while holding messages.');
+    }
 
     var BATCH_TIMER =  function(stream){
         batchQueue.push(stream || this);
@@ -150,9 +154,6 @@
 
     Frame.prototype.run = function(method){
 
-        if(this._holding)
-            throw new Error('Sensor.frame.transform cannot be invoked while holding.');
-
         this.modifyFrame('runMethod', method);
         this.modifyFrame('processName', 'doRun');
 
@@ -172,9 +173,6 @@
 
     Frame.prototype.transform = function(method){
 
-        if(this._holding)
-            throw new Error('Sensor.frame.transform cannot be invoked while holding.');
-
         if(arguments.length === 0)
             throw new Error('Sensor.frame.transform requires one argument.');
 
@@ -188,9 +186,6 @@
 
 
     Frame.prototype.name = function(method){
-
-        if(this._holding)
-            throw new Error('Sensor.frame.name cannot be invoked while holding.');
 
         if(arguments.length === 0)
             throw new Error('Sensor.frame.name requires one argument.');
@@ -231,9 +226,6 @@
     //};
 
     Frame.prototype.filter = function(func){
-
-        if(this._holding)
-            throw new Error('Sensor.frame.filter cannot be invoked with hold().');
 
         if(arguments.length === 0 || typeof func !== 'function')
             throw new Error('Sensor.frame.filter requires one function argument.');
@@ -303,6 +295,7 @@
 
     Frame.prototype.batch = function(){
 
+        this._holding = false; // holds end with timer
         this.modifyFrame(TIMER_METHOD, BATCH_TIMER);
         return this;
 
@@ -312,9 +305,6 @@
 
         if(arguments.length === 0 || typeof method !== 'function')
             throw new Error('Sensor.frame.ready requires one function argument.');
-
-        if(!this.scheduleMethod)
-            throw new Error('Sensor.frame.ready requires a schedule (batch, defer, throttle, delay)');
 
         return this.modifyFrame(READY_METHOD, method);
 
@@ -633,7 +623,6 @@
 
     };
 
-
     var Packet = function(msg, source){
 
         this.msg = msg;
@@ -664,6 +653,9 @@
 
     };
 
+    Bus.prototype.holding = function(){
+        return this._currentFrame._holding;
+    };
 
     Bus.prototype.addFrame = function(){
 
@@ -740,71 +732,83 @@
 
     Bus.prototype.defer = function(){
         var currentFrame = this._currentFrame;
-        this._holding ? currentFrame.delay(0) : this.addFrame().delay(0);
+        this.holding() ? currentFrame.delay(0) : this.addFrame().delay(0);
         return this;
     };
 
     Bus.prototype.batch = function(){
         var currentFrame = this._currentFrame;
-        this._holding ? currentFrame.batch() : this.addFrame().batch();
+        this.holding() ? currentFrame.batch() : this.addFrame().batch();
         return this;
     };
 
     Bus.prototype.group = function(){
-        this._holding = true;
+        ASSERT_NOT_HOLDING(this);
         this.addFrame().group();
         return this;
     };
 
     Bus.prototype.hold = function(){
-        this._holding = true;
+        ASSERT_NOT_HOLDING(this);
         this.addFrame().hold();
         return this;
     };
 
     Bus.prototype.delay = function(num){
+        ASSERT_NOT_HOLDING(this);
         this.addFrame().delay(num);
         return this;
     };
 
 
     Bus.prototype.all = function(){
-        this.addFrame().all();
+        this.holding() ? currentFrame.all() : this.addFrame().all();
         return this;
     };
 
     Bus.prototype.first = function(n){
-        this.addFrame().first(n);
+        this.holding() ? currentFrame.first(n) : this.addFrame().first(n);
         return this;
     };
 
     Bus.prototype.last = function(n){
         var currentFrame = this._currentFrame;
-        this._holding ? currentFrame.last(n) : this.addFrame().last(n);
+        this.holding() ? currentFrame.last(n) : this.addFrame().last(n);
         return this;
     };
 
     Bus.prototype.run = function(func){
+        ASSERT_NOT_HOLDING(this);
         this.addFrame().run(func);
         return this;
     };
 
     Bus.prototype.merge = function(){
+        ASSERT_NOT_HOLDING(this);
         this.mergeFrame();
         return this;
     };
 
     Bus.prototype.transform = function(func){
+        ASSERT_NOT_HOLDING(this);
         this.addFrame().transform(func);
         return this;
     };
 
+    Bus.prototype.name = function(func){
+        ASSERT_NOT_HOLDING(this);
+        this.addFrame().name(func);
+        return this;
+    };
+
     Bus.prototype.filter = function(func){
+        ASSERT_NOT_HOLDING(this);
         this.addFrame().filter(func);
         return this;
     };
 
-    Bus.prototype.skipDupes = function(func){
+    Bus.prototype.skipDupes = function(){
+        ASSERT_NOT_HOLDING(this);
         this.addFrame().filter(SKIP_DUPES_FILTER);
         return this;
     };
