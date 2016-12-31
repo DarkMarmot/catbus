@@ -16,7 +16,7 @@ var msgLog, sourceLog, packetLog, lastMsg;
 var log = function(msg, source, packet){
 
     lastMsg = msg;
-    console.log('::', msg, source, '\n');
+    //console.log('::', msg, source, '\n');
     msgLog.push(msg);
     sourceLog.push(source);
     packetLog.push(packet);
@@ -27,7 +27,7 @@ var log = function(msg, source, packet){
 var reset = function(){
 
     lastMsg = undefined;
-    console.log('reset!');
+    //console.log('reset!');
     clock = sinon.useFakeTimers();
     sourceLog = [];
     msgLog = [];
@@ -37,7 +37,7 @@ var reset = function(){
 
 
 var teardown = function(){
-    console.log('teardown!');
+    //console.log('teardown!');
     clock.restore();
 }
 
@@ -268,7 +268,7 @@ describe('Catbus', function(){
 
 
 
-                console.log('delay!!!');
+              //  console.log('delay!!!');
 
                 var b = Catbus.fromEvent(dice, 'roll');
                 b.transform(function(msg){ return msg * 2});
@@ -284,12 +284,12 @@ describe('Catbus', function(){
                 dice.emit('roll', 7);
 
                 assert.equal(msgLog.length, 0);
-                console.log(clock);
-                console.log(Date.now());
+              //  console.log(clock);
+               // console.log(Date.now());
 
                 clock.tick(50);
 
-                console.log(Date.now());
+               // console.log(Date.now());
                 assert.equal(msgLog[0], undefined);
 
                 clock.tick(110);

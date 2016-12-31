@@ -1,7 +1,7 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-    typeof define === 'function' && define.amd ? define(['exports'], factory) :
-    (factory((global.catbus = global.catbus || {})));
+   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+   typeof define === 'function' && define.amd ? define(['exports'], factory) :
+   (factory((global.catbus = global.catbus || {})));
 }(this, (function (exports) { 'use strict';
 
 /**
@@ -545,7 +545,7 @@ Stream.prototype.doGroup = function(msg, source, last) {
     var messages = this.messagesByKey[groupName] || [];
     this.messagesByKey[groupName]  = this.keepMethod(messages, msg, this.keepCount);
 
-    console.log('stream: ' + this.frame.streams.indexOf(this) + ':', msg, source, this.messagesByKey);
+   // console.log('stream: ' + this.frame.streams.indexOf(this) + ':', msg, source, this.messagesByKey)
     if(!this.primed && (this.latched || this.readyMethod(this.messagesByKey, last))) {
         if(this.timerMethod) {
             this.primed = true;
@@ -624,15 +624,10 @@ Catbus.fromStream = function(stream){
 
 };
 
-
-Catbus.registerMethod = function(name, func){
-    Bus.prototype[name] = func;
-};
-
 var Bus = function(sourceStreams) {
 
     this.frames = [];
-    this._props = {}; // primarily for instance variables
+    this.scope = null; // placeholder for instance variables or context usage
     var f = this._currentFrame = new Frame(this, sourceStreams);
     this.frames.push(f);
     this.dead = false;
