@@ -7,7 +7,7 @@ var events = require('events');
 var dice = new events.EventEmitter();
 
 var assert = require('assert');
-var Catbus = require('../dist/catbus.umd.js');
+var Catbus = require('../dist/catbus.umd.js').Catbus;
 
 
 var msgLog, sourceLog, packetLog, lastMsg;

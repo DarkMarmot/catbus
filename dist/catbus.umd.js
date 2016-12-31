@@ -1,11 +1,11 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-    typeof define === 'function' && define.amd ? define(factory) :
-    (global.catbus = factory());
-}(this, (function () { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+    typeof define === 'function' && define.amd ? define(['exports'], factory) :
+    (factory((global.catbus = global.catbus || {})));
+}(this, (function (exports) { 'use strict';
 
 /**
- * catbus.js (v4.0.0) --
+ * catbus.js (v3.0.0) --
  *
  * Copyright (c) 2016 Scott Southworth
  *
@@ -624,9 +624,15 @@ Catbus.fromStream = function(stream){
 
 };
 
+
+Catbus.registerMethod = function(name, func){
+    Bus.prototype[name] = func;
+};
+
 var Bus = function(sourceStreams) {
 
     this.frames = [];
+    this._props = {}; // primarily for instance variables
     var f = this._currentFrame = new Frame(this, sourceStreams);
     this.frames.push(f);
     this.dead = false;
@@ -817,6 +823,11 @@ Bus.prototype.destroy = function(){
 
 };
 
-return Catbus;
+exports.Catbus = Catbus;
+exports.Bus = Bus;
+exports.Stream = Stream;
+exports.Frame = Frame;
+
+Object.defineProperty(exports, '__esModule', { value: true });
 
 })));

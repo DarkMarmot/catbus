@@ -838,4 +838,4 @@ Bus.prototype.destroy = function(){
 
 };
 
-export default Catbus;
+export {Catbus, Bus, Stream, Frame};

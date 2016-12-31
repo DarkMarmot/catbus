@@ -1,5 +1,5 @@
 /**
- * catbus.js (v4.0.0) --
+ * catbus.js (v3.0.0) --
  *
  * Copyright (c) 2016 Scott Southworth
  *
@@ -618,9 +618,15 @@ Catbus.fromStream = function(stream){
 
 };
 
+
+Catbus.registerMethod = function(name, func){
+    Bus.prototype[name] = func;
+};
+
 var Bus = function(sourceStreams) {
 
     this.frames = [];
+    this._props = {}; // primarily for instance variables
     var f = this._currentFrame = new Frame(this, sourceStreams);
     this.frames.push(f);
     this.dead = false;
@@ -811,4 +817,4 @@ Bus.prototype.destroy = function(){
 
 };
 
-export default Catbus;
+export { Catbus, Bus, Stream, Frame };
